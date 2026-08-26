@@ -121,6 +121,31 @@ an entry in this file explaining why.
 
 ---
 
+## 2026-08-26 — ANP's monthly series has real holes, and the gate had to learn the difference
+
+Running the full 200-day window against the live server surfaced something the
+documentation does not mention: **2026-04 and 2026-06 are not published**,
+while 03, 05 and 07 are. I tried six naming variants for the missing months;
+all 404. The files that do exist each cover exactly one month, so this is not a
+bimonthly layout — the series is simply incomplete.
+
+**Why this mattered immediately.** The period-gap gate would have aborted every
+single run over a hole nobody can fix — the textbook false positive that
+freezes data for no reason, which is the cost this project accepted when it
+chose aborting over warning. Accepting that cost is only honest if the gate can
+tell the two cases apart.
+
+**Decision.** `ingest.baixar` now returns the URLs the source did not publish
+alongside what it downloaded, and those months are passed to `gap_check` as
+`conhecidos_ausentes`. A gap the SOURCE has is tolerated and printed; a gap a
+partial DOWNLOAD created still aborts.
+
+**Also fixed here:** the dry run was only exercising `validate`, not
+`gap_check`. A rehearsal that skips half the gates is not a rehearsal — it
+would have let this exact gap surprise the first real run.
+
+---
+
 ## Open
 
 - `anp_vendas` URL pattern is **unverified** against the live server, unlike

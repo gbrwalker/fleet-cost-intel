@@ -79,9 +79,9 @@ def test_conteudo_identico_nao_reprocessa(monkeypatch):
     """Layer 1 of idempotency: same hash, no work."""
     monkeypatch.setattr(ingest, "buscar", lambda url, **k: b"col-a;col-b\n1;2\n")
     url = "https://exemplo/2026/07-x.csv"
-    primeira = ingest.baixar([url])
+    primeira, _ = ingest.baixar([url])
     assert primeira[0].mudou is True
-    segunda = ingest.baixar([url])
+    segunda, _ = ingest.baixar([url])
     assert segunda[0].mudou is False
     assert primeira[0].sha256 == segunda[0].sha256
 
@@ -91,7 +91,8 @@ def test_conteudo_diferente_regrava(monkeypatch):
     monkeypatch.setattr(ingest, "buscar", lambda u, **k: b"antigo")
     ingest.baixar([url])
     monkeypatch.setattr(ingest, "buscar", lambda u, **k: b"novo")
-    assert ingest.baixar([url])[0].mudou is True
+    novos, _ = ingest.baixar([url])
+    assert novos[0].mudou is True
 
 
 def test_404_e_tolerado_e_nao_derruba(monkeypatch):
@@ -99,13 +100,16 @@ def test_404_e_tolerado_e_nao_derruba(monkeypatch):
     def erro(url, **k):
         raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
     monkeypatch.setattr(ingest, "buscar", erro)
-    assert ingest.baixar(["https://exemplo/2026/12-x.csv"]) == []
+    baixados, ausentes = ingest.baixar(["https://exemplo/2026/12-x.csv"])
+    assert baixados == []
+    assert ausentes == ["https://exemplo/2026/12-x.csv"]
 
 
 def test_bruto_e_gravado_comprimido_e_le_de_volta(monkeypatch):
     corpo = b"col;val\nAL;6,79\n" * 50
     monkeypatch.setattr(ingest, "buscar", lambda u, **k: corpo)
-    b = ingest.baixar(["https://exemplo/2026/07-x.csv"])[0]
+    baixados, _ = ingest.baixar(["https://exemplo/2026/07-x.csv"])
+    b = baixados[0]
     assert b.caminho.suffix == ".gz"
     assert gzip.decompress(b.caminho.read_bytes()) == corpo
     assert ingest.ler(b.caminho) == corpo
@@ -125,3 +129,27 @@ def test_404_nao_e_repetido(monkeypatch):
     with pytest.raises(urllib.error.HTTPError):
         ingest.buscar("https://exemplo/x.csv", tentativas=4)
     assert chamadas["n"] == 1
+
+
+def test_mes_ausente_e_extraido_da_url():
+    """The gap gate needs to know WHICH months the source skipped."""
+    assert ingest.meses_ausentes([
+        "https://x/anp/2026/04-dados-abertos-precos-diesel-gnv.csv",
+        "https://x/anp/2026/04-dados-abertos-precos-gasolina-etanol.csv",
+        "https://x/anp/2026/06-dados-abertos-precos-diesel-gnv.csv",
+    ]) == {"2026-04", "2026-06"}
+
+
+def test_lacuna_da_origem_nao_derruba_o_portao():
+    """ANP's monthly series really is missing 2026-04 and 2026-06 (checked
+    2026-08-26). A gate that cannot tell a source gap from a download gap
+    would abort forever over something nobody can fix."""
+    import pandas as pd
+
+    from fleet_cost import quality
+
+    df = pd.DataFrame({"ano_mes": ["2026-03", "2026-05", "2026-07"]})
+    with pytest.raises(quality.QualityGate):
+        quality.gap_check(df, "ano_mes", "x")
+    quality.gap_check(df, "ano_mes", "x",
+                      conhecidos_ausentes={"2026-04", "2026-06"})

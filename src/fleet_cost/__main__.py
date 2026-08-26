@@ -27,7 +27,11 @@ def rodar_precos(hoje: date, seco: bool) -> int:
     print(f"[anp_precos] window {inicio} .. {hoje} ({janela.days}d)")
     print(f"             reason: {janela.reason}")
 
-    baixados = ingest.baixar(anp_precos.urls(inicio, hoje))
+    baixados, ausentes = ingest.baixar(anp_precos.urls(inicio, hoje))
+    sem_publicacao = ingest.meses_ausentes(ausentes)
+    if sem_publicacao:
+        print(f"             source has no file for: "
+              f"{', '.join(sorted(sem_publicacao))}")
     if not baixados:
         print("             nothing downloaded; nothing to do")
         return 0
@@ -57,15 +61,21 @@ def rodar_precos(hoje: date, seco: bool) -> int:
     print(f"    discard rate {taxa:.2%} — {descartes or 'none'}")
 
     if seco:
-        print("    [DRY RUN] gates would run; nothing written")
+        # A dry run that skips half the gates is not a rehearsal. Both run
+        # here, including the period gap — the earlier version only checked
+        # `validate` and would have let a gap surprise the real run.
+        print("    [DRY RUN] running every gate; nothing will be written")
         publish.quality.validate(precos, publish.anterior("precos_por_uf"),
                                  "precos_por_uf", key_column="uf",
                                  price_column="preco_medio")
+        publish.quality.gap_check(precos, "ano_mes", "precos_por_uf",
+                                  conhecidos_ausentes=sem_publicacao)
         print("    [DRY RUN] gates passed")
         return 0
 
     publish.publicar(precos, "precos_por_uf", key_column="uf",
-                     price_column="preco_medio", period_column="ano_mes")
+                     price_column="preco_medio", period_column="ano_mes",
+                     conhecidos_ausentes=sem_publicacao)
     publish.publicar(final, "custo_por_km", key_column="uf")
     return 0
 

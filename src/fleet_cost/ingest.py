@@ -12,6 +12,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -72,21 +73,28 @@ def buscar(url: str, *, tentativas: int = 4, timeout: int = 120) -> bytes:
     raise RuntimeError(f"failed after {tentativas} attempts: {url}") from ultimo
 
 
-def baixar(urls: list[str]) -> list[Baixado]:
+def baixar(urls: list[str]) -> tuple[list[Baixado], list[str]]:
     """Download each URL, skipping ones whose content has not changed.
 
-    A 404 is tolerated and logged: monthly files for a month that has not been
-    published yet are expected to be missing, and that is not a failure.
+    Returns (downloaded, absent_at_source). The second list matters: ANP's
+    monthly series HAS GAPS — checked 2026-08-26, 2026-04 and 2026-06 are not
+    published under any name I could find, while 03, 05 and 07 are.
+
+    Without carrying that list forward, the period-gap quality gate would abort
+    every single run over a hole the source itself has, which is exactly the
+    false positive that freezes data for no reason.
     """
     RAW.mkdir(parents=True, exist_ok=True)
     manifesto = _manifesto()
     out: list[Baixado] = []
+    ausentes: list[str] = []
     for url in urls:
         try:
             corpo = buscar(url)
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                print(f"  [skip 404] {url.rsplit('/', 1)[-1]} — not published yet")
+                print(f"  [absent] {url.rsplit('/', 1)[-1]} — not published by the source")
+                ausentes.append(url)
                 continue
             raise
         digest = hashlib.sha256(corpo).hexdigest()
@@ -99,7 +107,17 @@ def baixar(urls: list[str]) -> list[Baixado]:
               f"({len(corpo) / 1e6:.1f} MB)")
         out.append(Baixado(url, destino, digest, mudou))
     _gravar_manifesto(manifesto)
-    return out
+    return out, ausentes
+
+
+def meses_ausentes(urls: list[str]) -> set[str]:
+    """Extract YYYY-MM from URLs the source did not publish."""
+    meses = set()
+    for u in urls:
+        m = re.search(r"/(\d{4})/(\d{2})-", u)
+        if m:
+            meses.add(f"{m.group(1)}-{m.group(2)}")
+    return meses
 
 
 def ler(caminho: Path) -> bytes:

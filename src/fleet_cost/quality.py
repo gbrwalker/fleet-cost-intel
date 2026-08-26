@@ -81,15 +81,23 @@ def validate(
             )
 
 
-def gap_check(df: pd.DataFrame, period_column: str, nome: str) -> None:
-    """No month may be missing between the first and last period present."""
+def gap_check(df: pd.DataFrame, period_column: str, nome: str,
+              conhecidos_ausentes: set[str] | None = None) -> None:
+    """No month may be missing between the first and last period present.
+
+    `conhecidos_ausentes` are periods the SOURCE does not publish, as opposed
+    to periods a partial download lost. The distinction is the whole point:
+    ANP's monthly series has real holes (2026-04 and 2026-06, checked
+    2026-08-26), and a gate that cannot tell a source gap from a download gap
+    aborts forever over something nobody can fix.
+    """
     if df.empty or period_column not in df.columns:
         return
     periodos = sorted(set(df[period_column].dropna().astype(str)))
     if len(periodos) < 2:
         return
     esperados = pd.period_range(periodos[0], periodos[-1], freq="M").astype(str)
-    faltando = sorted(set(esperados) - set(periodos))
+    faltando = sorted(set(esperados) - set(periodos) - (conhecidos_ausentes or set()))
     if faltando:
         raise QualityGate(
             f"[{nome}] missing period(s) inside the window: {faltando}. "

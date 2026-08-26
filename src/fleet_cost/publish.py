@@ -42,14 +42,16 @@ def escrever_atomico(df: pd.DataFrame, destino: Path) -> None:
 
 def publicar(df: pd.DataFrame, nome: str, *, key_column: str | None = None,
              price_column: str | None = None,
-             period_column: str | None = None) -> Path:
+             period_column: str | None = None,
+             conhecidos_ausentes: set[str] | None = None) -> Path:
     """Run every gate, then write atomically. Raises QualityGate and writes
     nothing if any gate fails."""
     velho = anterior(nome)
     quality.validate(df, velho, nome,
                      key_column=key_column, price_column=price_column)
     if period_column:
-        quality.gap_check(df, period_column, nome)
+        quality.gap_check(df, period_column, nome,
+                          conhecidos_ausentes=conhecidos_ausentes)
 
     destino = PUBLICADO / f"{nome}.parquet"
     escrever_atomico(df, destino)
