@@ -50,20 +50,25 @@ jobs:
       - name: Open an issue when it breaks
         if: ${{ failure() || cancelled() }}
         uses: actions/github-script@60a0d83039c74a4aa971cc2dc08c1e4de1cb9c04 # v7.0.1
+        env:
+          # Through env, not inline `${{ }}`, so the workflow expression never
+          # lands inside a JS template literal — that is what broke the first
+          # version of this file.
+          JOB_STATUS: ${{ job.status }}
         with:
           script: |
+            const url = `https://github.com/${context.repo.owner}/`
+                      + `${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `Status: ${process.env.JOB_STATUS}`,
+              url,
+              'If this was a quality gate, nothing was written and the '
+              + 'previous publication is intact.',
+            ].join('\n\n');
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Pipeline failed - run ${context.runId}`,
-              body: `Status: ${{ job.status }}
-
-` +
-                    `https://github.com/${context.repo.owner}/${context.repo.repo}` +
-                    `/actions/runs/${context.runId}
-
-` +
-                    `If this was a quality gate, nothing was written and the ` +
-                    `previous publication is intact.`,
-              labels: ['pipeline', 'automated']
-            })
+              body,
+              labels: ['pipeline', 'automated'],
+            });
