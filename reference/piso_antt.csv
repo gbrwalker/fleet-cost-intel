@@ -1,10 +1,31 @@
-# ANTT minimum freight floor - hand-maintained reference table.
-# NOT open data: checked 2026-08-26, ANTT's portal has 106 datasets and none is
-# the freight floor. It lives in ANNEX II of resolutions (PDF) plus a web
-# calculator at calculadorafrete.antt.gov.br.
-# Update when a new resolution is published, and record its number and date.
-# VALUES BELOW ARE PLACEHOLDERS pending transcription from the resolution.
-resolucao,publicada_em,tipo_carga,eixos,piso_por_km
-PLACEHOLDER,2026-01-01,carga_lotacao,5,0.0000
-PLACEHOLDER,2026-01-01,carga_lotacao,6,0.0000
-PLACEHOLDER,2026-01-01,carga_lotacao,9,0.0000
+# ANTT minimum freight floor — Table A, general full-load cargo (type 5).
+#
+# SOURCE: Resolução ANTT nº 6.084/2026, published in the Diário Oficial da
+# União on 2026-07-17. Transcribed on 2026-08-26 from the official text at
+# anttlegis.antt.gov.br, NOT from a secondary source.
+#
+# Why that distinction matters: a widely-cited blog publishes this same table
+# with four wrong CCD values (5.0000, 5.8000, 7.5000, 8.0000 against the
+# official 5.0977, 5.7822, 7.3547, 8.0927) and a flat CC of 782.50 for every
+# axle count, when the official CC ranges from 451.84 to 903.32. Round numbers
+# sitting next to four-decimal ones is the tell.
+#
+# THE FLOOR IS NOT A PER-KM RATE. The regulated formula is:
+#     floor (R$ per trip) = distance_km * ccd_per_km + cc_fixed
+# `cc_fixed` covers loading and unloading and is charged once per trip. Any
+# per-km comparison must state the reference distance, because cc_fixed
+# amortises: for 2 axles the floor is R$ 8.50/km at 100 km and R$ 4.43/km at
+# 1000 km. Publishing a single "floor per km" without the distance would be
+# wrong by a factor of two.
+#
+# NOT open data: ANTT's portal carries 106 datasets and none is this table. It
+# lives in the resolution's annex, as PDF. Update by hand when a new resolution
+# is published, and change `resolucao` and `publicada_em` with it.
+resolucao,publicada_em,tabela,tipo_carga,eixos,veiculo,ccd_por_km,cc_fixo
+6084/2026,2026-07-17,A,carga_geral,2,Toco,3.9826,451.84
+6084/2026,2026-07-17,A,carga_geral,3,Truck,5.0977,541.86
+6084/2026,2026-07-17,A,carga_geral,4,Bitruck,5.7822,588.86
+6084/2026,2026-07-17,A,carga_geral,5,Carreta,6.6718,657.56
+6084/2026,2026-07-17,A,carga_geral,6,Carreta trucada,7.3547,671.93
+6084/2026,2026-07-17,A,carga_geral,7,Bitrem,8.0927,831.66
+6084/2026,2026-07-17,A,carga_geral,9,Rodotrem,9.2027,903.32

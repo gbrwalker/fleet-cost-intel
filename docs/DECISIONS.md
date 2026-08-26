@@ -87,10 +87,18 @@ of the project, exercised two or three times a year, and fragile for the wrong
 reason — it teaches PDF parsing, not pipelines.
 
 **Cost.** A manual step, and a table that can go stale without anything
-failing. Mitigated by carrying the resolution date in the data, so a consumer
-can see how old the floor is. **Currently the values are `PLACEHOLDER`** and
-must be transcribed from the current resolution before the comparison means
-anything.
+failing. Mitigated by carrying the resolution number and date in the data, so a
+consumer can see how old the floor is, and by a guard in `carregar_piso()` that
+refuses a non-positive CCD — the file shipped with placeholder zeros, and a
+zero floor silently turns every margin into the fuel cost with its sign
+flipped.
+
+**Filled in on 2026-08-26** from Resolução ANTT nº 6.084/2026 (published
+2026-07-17), Table A, general full-load cargo, seven axle configurations.
+Transcribed from the official text at anttlegis.antt.gov.br. A widely-cited
+blog publishes the same table with four wrong CCD values and a flat CC of
+782.50 for every axle count, when the official CC ranges from 451.84 to 903.32
+— round numbers sitting beside four-decimal ones was the tell.
 
 ---
 
@@ -143,6 +151,28 @@ partial DOWNLOAD created still aborts.
 **Also fixed here:** the dry run was only exercising `validate`, not
 `gap_check`. A rehearsal that skips half the gates is not a rehearsal — it
 would have let this exact gap surprise the first real run.
+
+---
+
+## 2026-08-26 — The floor is not a per-km rate, and modelling it as one was wrong
+
+The first version of `contra_piso()` treated the ANTT floor as a rate per
+kilometre. It is not. The regulated formula is:
+
+    floor (R$ per trip) = distance_km * ccd_per_km + cc_fixed
+
+`cc_fixed` covers loading and unloading and is charged **once per trip**, so it
+amortises over distance. For a 2-axle vehicle the floor is R$ 8.50/km at 100 km
+and R$ 4.43/km at 1000 km — **a factor of two.**
+
+**Decision.** The output carries `distancia_km` on every row, computed at three
+reference distances (100, 500, 1000 km). No row states a per-km floor without
+saying which distance produced it.
+
+**Cost.** Three times the rows in `custo_por_km` (13,230 instead of 4,410).
+Worth it: a single per-km figure with no distance attached would be wrong by up
+to a factor of two, in whichever direction the reader happens to assume — and
+it would look perfectly reasonable while being wrong.
 
 ---
 

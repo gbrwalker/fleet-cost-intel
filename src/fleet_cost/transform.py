@@ -18,8 +18,11 @@ import pandas as pd
 import yaml
 
 CHAVE = ["uf", "ano_mes", "produto"]
-REFERENCIA = Path("reference")
-CONFIG = Path("config")
+# Absolutos, a partir da raiz do projeto. Relativos, um `cd` — ou um teste que
+# troca o diretório — fazia o pacote não achar o próprio arquivo de referência.
+_RAIZ = Path(__file__).resolve().parents[2]
+REFERENCIA = _RAIZ / "reference"
+CONFIG = _RAIZ / "config"
 
 
 def carregar_consumo() -> dict:
@@ -46,8 +49,15 @@ def carregar_piso() -> pd.DataFrame:
     # `comment="#"` because provenance lives at the top of the file: the
     # resolution number and the date it was transcribed travel WITH the
     # numbers, not in a sibling doc that drifts out of sync.
-    return pd.read_csv(REFERENCIA / "piso_antt.csv", comment="#",
-                       dtype={"eixos": int})
+    df = pd.read_csv(REFERENCIA / "piso_antt.csv", comment="#",
+                     dtype={"eixos": int})
+    if (df["ccd_por_km"] <= 0).any():
+        raise ValueError(
+            "reference/piso_antt.csv has a non-positive CCD. The file shipped "
+            "with placeholder zeros until 2026-08-26; a zero floor silently "
+            "turns every margin into the fuel cost with the sign flipped."
+        )
+    return df
 
 
 def precos_por_uf(df: pd.DataFrame) -> pd.DataFrame:
@@ -91,17 +101,41 @@ def custo_por_km(precos: pd.DataFrame, consumo: dict) -> pd.DataFrame:
     return pd.concat(linhas, ignore_index=True) if linhas else precos
 
 
-def contra_piso(custo: pd.DataFrame, piso: pd.DataFrame) -> pd.DataFrame:
-    """Join fuel cost per km against the regulated floor per km.
+def contra_piso(custo: pd.DataFrame, piso: pd.DataFrame,
+                distancias_km=(100, 500, 1000)) -> pd.DataFrame:
+    """Fuel cost per km against the regulated floor, at reference distances.
 
-    `margem_por_km` is the floor minus the fuel cost. It is NOT profit: fuel is
-    one cost among several, and the floor is a legal minimum, not a market
-    price. Named `margem_sobre_combustivel` for that reason — a column called
-    `lucro` would be read as profit by whoever opens the file next.
+    **The floor is not a per-km rate**, and modelling it as one was the first
+    version's mistake. The regulated formula is:
+
+        floor (R$ per trip) = distance_km * ccd_per_km + cc_fixed
+
+    `cc_fixed` is loading and unloading, charged once per trip, so it amortises
+    over distance. For 2 axles the floor is R$ 8.50/km at 100 km and R$ 4.43/km
+    at 1000 km — a factor of two. Publishing one "floor per km" with no
+    distance attached would be wrong by that factor, in whichever direction the
+    reader happens to assume.
+
+    So the output carries the distance, and every row says which one it used.
+
+    `margem_sobre_combustivel_por_km` is the floor minus the fuel cost. It is
+    NOT profit: fuel is one cost among several, and the floor is a legal
+    minimum, not a market price. The column is named for what it measures — a
+    column called `lucro` would be read as profit by whoever opens the file
+    next.
     """
     if custo.empty or piso.empty:
         return custo
-    j = custo.merge(piso, how="cross")
+    linhas = []
+    for d in distancias_km:
+        bloco = piso.copy()
+        bloco["distancia_km"] = d
+        bloco["piso_por_km"] = (
+            (bloco["ccd_por_km"] * d + bloco["cc_fixo"]) / d).round(4)
+        linhas.append(bloco)
+    piso_km = pd.concat(linhas, ignore_index=True)
+
+    j = custo.merge(piso_km, how="cross")
     j["margem_sobre_combustivel_por_km"] = (
         j["piso_por_km"] - j["custo_por_km"]
     ).round(4)
