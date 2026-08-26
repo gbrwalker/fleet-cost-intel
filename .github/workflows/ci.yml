@@ -27,6 +27,11 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with: {python-version: '3.12', cache: 'pip'}
       - run: pip install -r requirements.txt -r requirements-dev.txt
+        # `-e .` because the package lives under src/ and is NOT on
+        # sys.path by default. Running locally with the path injected by
+        # hand hid this, and CI found it on the first real run — which is
+        # the argument for having CI run the entry point, not just tests.
+      - run: pip install -e .
       - name: Lint
         run: ruff check .
       - name: Tests and coverage gate
