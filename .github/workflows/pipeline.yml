@@ -1,0 +1,69 @@
+name: Pipeline
+on:
+  schedule:
+    # Wednesday 06:00 UTC-3, one day of slack after ANP's weekly publication.
+    # CONFIRM the real publication day in the first week of operation and
+    # adjust here — a cron chosen by guess is a cron that misses.
+    - cron: '0 9 * * 3'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run every stage except the write
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # the pipeline commits its own published output
+  issues: write     # and opens an issue when it breaks
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false   # NEVER cancel mid-publication
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with: {python-version: '3.12', cache: 'pip'}
+      - run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        run: |
+          python -m fleet_cost ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Commit published output
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name  "fleet-cost-intel[bot]"
+          git config user.email "actions@github.com"
+          git add data/published data/raw/manifest.json
+          git diff --staged --quiet || git commit -m "data: run ${{ github.run_id }}"
+          git push
+
+      # `failure() || cancelled()` and not just `failure()`. A job killed by
+      # timeout-minutes finishes as `cancelled`, and `cancelled` does NOT
+      # trigger `if: failure()`. In the private system this project models,
+      # two runs died with no issue and no e-mail because of exactly this.
+      - name: Open an issue when it breaks
+        if: ${{ failure() || cancelled() }}
+        uses: actions/github-script@60a0d83039c74a4aa971cc2dc08c1e4de1cb9c04 # v7.0.1
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Pipeline failed - run ${context.runId}`,
+              body: `Status: ${{ job.status }}
+
+` +
+                    `https://github.com/${context.repo.owner}/${context.repo.repo}` +
+                    `/actions/runs/${context.runId}
+
+` +
+                    `If this was a quality gate, nothing was written and the ` +
+                    `previous publication is intact.`,
+              labels: ['pipeline', 'automated']
+            })

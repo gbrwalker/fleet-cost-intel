@@ -1,0 +1,10 @@
+# ANTT minimum freight floor - hand-maintained reference table.
+# NOT open data: checked 2026-08-26, ANTT's portal has 106 datasets and none is
+# the freight floor. It lives in ANNEX II of resolutions (PDF) plus a web
+# calculator at calculadorafrete.antt.gov.br.
+# Update when a new resolution is published, and record its number and date.
+# VALUES BELOW ARE PLACEHOLDERS pending transcription from the resolution.
+resolucao,publicada_em,tipo_carga,eixos,piso_por_km
+PLACEHOLDER,2026-01-01,carga_lotacao,5,0.0000
+PLACEHOLDER,2026-01-01,carga_lotacao,6,0.0000
+PLACEHOLDER,2026-01-01,carga_lotacao,9,0.0000

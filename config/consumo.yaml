@@ -1,0 +1,29 @@
+# Fuel consumption is a DECLARED PARAMETER, not a measurement.
+#
+# No reliable public source gives average km/l by vehicle class in Brazil, so
+# this is configuration with a stated origin and a sensitivity range — never a
+# number invented inside the code.
+#
+# The published output carries the central value AND both ends, so the answer
+# reads "cost per km between X and Y for consumption between A and B", which is
+# the honest shape when a parameter is an assumption.
+#
+# ORIGIN: industry rule-of-thumb ranges, not measured. Replace with measured
+# telemetry if a fleet operator contributes real numbers, and update `origem`.
+
+consumo_medio:
+  caminhao_pesado:
+    descricao: Heavy truck, loaded, highway
+    km_por_litro: 2.5
+    faixa: {min: 2.0, max: 3.2}
+    origem: industry rule of thumb; NOT measured
+  caminhao_medio:
+    descricao: Medium truck, urban distribution
+    km_por_litro: 4.0
+    faixa: {min: 3.2, max: 5.0}
+    origem: industry rule of thumb; NOT measured
+  utilitario:
+    descricao: Light commercial vehicle
+    km_por_litro: 9.0
+    faixa: {min: 7.5, max: 11.0}
+    origem: industry rule of thumb; NOT measured

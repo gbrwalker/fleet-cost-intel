@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+# Raw downloads are reproducible from the manifest and would bloat the repo.
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/manifest.json
+data/staged/*
+!data/staged/.gitkeep
