@@ -1,5 +1,7 @@
 # fleet-cost-intel
 
+[![CI](https://github.com/gbrwalker/fleet-cost-intel/actions/workflows/ci.yml/badge.svg)](https://github.com/gbrwalker/fleet-cost-intel/actions/workflows/ci.yml)
+
 **What it costs to run a truck per kilometre in Brazil, by state and by month —
 and how that moves against the regulated minimum freight floor.**
 
@@ -26,7 +28,7 @@ sophistication:
 | assumes the source answers | handles outages, schema drift and 404s |
 | reprocesses everything, or nothing | a retroactive window sized per source |
 | overwrites its output | validates first and **aborts**, preserving the last good file |
-| a cell that worked once | tests with a coverage gate in CI |
+| a cell that worked once | **43 tests, 76% coverage**, gated at 60% in CI |
 | `pip install` instructions | architecture decisions with their trade-offs |
 | clean data | dirty data handled explicitly, with discards counted |
 
@@ -145,9 +147,12 @@ that goes down makes a portfolio worse than no service).
 ## Status
 
 Early. Honest list of what is not done yet is at the bottom of
-[`docs/DECISIONS.md`](docs/DECISIONS.md) — including that the ANTT reference
-table still holds placeholder values, and that no production incident has been
-recorded because it has not run long enough to have one.
+[`docs/DECISIONS.md`](docs/DECISIONS.md) — including that no production
+incident has been recorded, because it has not run long enough to have one.
+
+The ANTT reference table is no longer a placeholder: values were transcribed
+on 2026-08-26 from Resolução ANTT nº 6.084/2026, from the official text at
+`anttlegis.antt.gov.br` and not from a secondary source.
 
 ## Data licence
 

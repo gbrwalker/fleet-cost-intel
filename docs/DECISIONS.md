@@ -181,7 +181,6 @@ it would look perfectly reasonable while being wrong.
 - `anp_vendas` URL pattern is **unverified** against the live server, unlike
   `anp_precos` whose schema was confirmed by downloading the real 3.8 MB file.
   Implementation task #1, and the fix lands in one place.
-- `reference/piso_antt.csv` holds placeholder values.
 - The pipeline cron day is a guess with one day of slack; confirm ANP's real
   publication day in the first week and adjust.
 - No incident has been recorded yet, which means this has not run long enough
